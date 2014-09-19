@@ -1,0 +1,156 @@
+bundle agent go
+{
+  methods:
+    "Mounts"
+      usebundle => selective_mount("mount_knowledge_in_policy_example");
+}
+
+bundle agent mount_knowledge_in_policy_example
+{
+  vars:
+
+    # Unfortunabtly you cant remove a specific mount like this., see the
+    # scratch dir for an example of how to specify a mount removal. This is a
+    # known issue and a shortcoming of the policy I have written thus far.
+    "mount[/var/cfengine/state/pg][file_system]"
+      string => "/dev/sdc1";
+    "mount[/var/cfengine/state/pg][type]"
+      string => "xfs";
+    "mount[/var/cfengine/state/pg][options]"
+      string => "noatime,noquota,nobarrier";
+    "mount[/var/cfengine/state/pg][dump]"
+      string => "0";
+    "mount[/var/cfengine/state/pg][pass]"
+      string => "0";
+    "mount[/var/cfengine/state/pg][status]"
+      string => "inactive"; # active|inactive
+    "mount[/var/cfengine/state/pg][reason]"
+      string => "For performance concerns its better to have postgres on a
+                different volume than other cfengine state information. The
+                nobarrier mount option should only be used when you have a
+                battery backed storage controller.";
+
+    "mount[/home][file_system]"
+      string => "/dev/sda";
+    "mount[/home][type]"
+      string => "ext4";
+    "mount[/home][options]"
+      string => "noatime";
+    "mount[/home][dump]"
+      string => "1";
+    "mount[/home][pass]"
+      string => "2";
+    "mount[/home][status]"
+      string => "active"; # active|inactive
+    "mount[/home][reason]"
+      string => "My home dir needs to have its own disk because i am a pack rat";
+
+    "mount[/scratch][file_system]"
+      string => ".*";
+    "mount[/scratch][type]"
+      string => ".*";
+    "mount[/scratch][options]"
+      string => ".*";
+    "mount[/scratch][dump]"
+      string => ".*";
+    "mount[/scratch][pass]"
+      string => ".*";
+    "mount[/scratch][status]"
+      string => "inactive"; # active|inactive
+    "mount[/scratch][reason]"
+      string => "My scratch dir needs to not be mounted, i dont need it anymore.";
+
+
+}
+
+bundle agent selective_mount(knowledge)
+{
+  vars:
+    "mount_points"
+      slist => getindices("$(knowledge).mount");
+
+    # I use this pattern a LOT. It gives me a mapping of the actual mount point
+    # to the canonified form which is useful for producing valid class
+    # expressions.
+    "c_mount[$(mount_points)]"
+      string => canonify("$(mount_points)");
+    "c_mounts" slist => getvalues("c_mount");
+
+    "fstab_entry_active[$(mount_points)]"
+      string => "$($(knowledge).mount[$(mount_points)][file_system])$(const.t)$(mount_points)$(const.t)$($(knowledge).mount[$(mount_points)][type])$(const.t)$($(knowledge).mount[$(mount_points)][options])$(const.t)$($(knowledge).mount[$(mount_points)][dump])$(const.t)$($(knowledge).mount[$(mount_points)][pass])",
+      ifvarclass => "want_$(c_mount[$(mount_points)])_active",
+      comment => "$($(knowledge).mount[$(mount_points)][reason])";
+    "desired_fstab_entries" slist => getvalues("fstab_entry_active");
+
+    # NOTE: Do each of the fields need to be escaped? I don't know, maybe.
+    # Let's see how well this works in practice and revisit if necessary.
+    # There is a very probable room for improvement on the regex at any rate.
+    # Should the regular expression be configuratble? I don't want to think
+    # about that right now, lots of variable soup. I sould copy the variables
+    # into this bundle like I normally do. Then all the other references are
+    # cleaner and easier to read.
+    "fstab_entry_inactive[$(mount_points)]"
+      string => "$($(knowledge).mount[$(mount_points)][file_system])\s+\$(mount_points)\s+$($(knowledge).mount[$(mount_points)][type])\s+$($(knowledge).mount[$(mount_points)][options])\s+$($(knowledge).mount[$(mount_points)][dump])\s+$($(knowledge).mount[$(mount_points)][pass])",
+      #string => "regex, match of get me from knowledge.removal_regex[$(mount_points)]",
+      #comment => "This is a regular expression to match lines in fstab that
+      #            ought not be there. It's conveniant to set this string in
+      #            knowledge so that its configurable on how to remove, but show an example with
+      #            an exact match and one with a partial match.",
+      comment => "$($(knowledge).mount[$(mount_points)][reason])",
+      ifvarclass => "want_$(c_mount[$(mount_points)])_inactive";
+      # Yeah I think each field must be escaped in order to match well for removal.
+      # TODO: KNOWN ISSUE: you cant just flip a mount from active to inactive
+      # and have it removed from the fstab file, thats because my regex string
+      # isnt good. I need to refactor the variable soup out a bit to make it
+      # more ledgible.
+
+
+  classes:
+    "want_$(mount_points)_active"
+      scope => "namespace",
+      expression => strcmp("active", "$($(knowledge).mount[$(mount_points)][status])");
+
+    "want_$(mount_points)_inactive"
+      scope => "namespace", # Have to namespace scope for the presnet_absent_lines bundle to be able to use the class?
+      expression => strcmp("inactive", "$($(knowledge).mount[$(mount_points)][status])");
+
+
+  files:
+    "$(this.promise_dirname)/fstab"
+      create => "true",
+      comment => "$($(knowledge).mount[$(mount_points)][reason])",
+      edit_line => present_absent_lines("want_$(c_mount[$(mount_points)])_active", "$(fstab_entry_active[$(mount_points)])",
+                                        "want_$(c_mount[$(mount_points)])_inactive", "$(fstab_entry_inactive[$(mount_points)])" );
+
+
+  reports:
+    DEBUG|DEBUG_mount::
+      "Found mount spec for active mount: '$(mount_points)'
+        $(fstab_entry_active[$(mount_points)])"
+        ifvarclass => "want_$(c_mount[$(mount_points)])_active",
+        comment => "This is the line that will go into /etc/fstab";
+
+      "Found removal regex for inactive mount: '$(mount_points)'
+        $(fstab_entry_inactive[$(mount_points)])"
+        ifvarclass => "want_$(c_mount[$(mount_points)])_inactive",
+        comment => "This is the regular expression that we will use to match lines that should be deleted";
+
+      "Did you know the canonified form of '$(mount_points)' is '$(c_mount[$(mount_points)])'? Canonified maps are useful.";
+
+      "Defined Class 'want_$(c_mount[$(mount_points)])_active'"
+        ifvarclass => "want_$(c_mount[$(mount_points)])_active";
+
+      "Defined Class 'want_$(c_mount[$(mount_points)])_inactive'"
+        ifvarclass => "want_$(c_mount[$(mount_points)])_inactive";
+}
+
+bundle edit_line present_absent_lines(presnet_class, present_line, absent_class, absent_line)
+{
+  insert_lines:
+    "$(present_line)"
+      ifvarclass => "$(present_class)";
+
+  delete_lines:
+    "$(absent_line)"
+      ifvarclass => "$(absent_class)";
+}
