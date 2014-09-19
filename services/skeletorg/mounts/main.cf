@@ -76,10 +76,20 @@ bundle agent selective_mount(knowledge)
       string => canonify("$(mount_points)");
     "c_mounts" slist => getvalues("c_mount");
 
+    # Copy mount specifications locally for readability in policy.
+    # Can this block be replaced with mergedata?
+    "mount[$(mount_points)][file_system]" string => "$($(knowledge).mount[$(mount_points)][file_system])";
+    "mount[$(mount_points)][type]" string => "$($(knowledge).mount[$(mount_points)][type])";
+    "mount[$(mount_points)][options]" string => "$($(knowledge).mount[$(mount_points)][options])";
+    "mount[$(mount_points)][dump]" string => "$($(knowledge).mount[$(mount_points)][dump])";
+    "mount[$(mount_points)][pass]" string => "$($(knowledge).mount[$(mount_points)][pass])";
+    "mount[$(mount_points)][status]" string => "$($(knowledge).mount[$(mount_points)][status])";
+    "mount[$(mount_points)][reason]" string => "$($(knowledge).mount[$(mount_points)][reason])";
+
     "fstab_entry_active[$(mount_points)]"
-      string => "$($(knowledge).mount[$(mount_points)][file_system])$(const.t)$(mount_points)$(const.t)$($(knowledge).mount[$(mount_points)][type])$(const.t)$($(knowledge).mount[$(mount_points)][options])$(const.t)$($(knowledge).mount[$(mount_points)][dump])$(const.t)$($(knowledge).mount[$(mount_points)][pass])",
+      string => "$(mount[$(mount_points)][file_system])$(const.t)$(mount_points)$(const.t)$(mount[$(mount_points)][type])$(const.t)$(mount[$(mount_points)][options])$(const.t)$(mount[$(mount_points)][dump])$(const.t)$(mount[$(mount_points)][pass])",
       ifvarclass => "want_$(c_mount[$(mount_points)])_active",
-      comment => "$($(knowledge).mount[$(mount_points)][reason])";
+      comment => "$(mount[$(mount_points)][reason])";
     "desired_fstab_entries" slist => getvalues("fstab_entry_active");
 
     # NOTE: Do each of the fields need to be escaped? I don't know, maybe.
@@ -90,13 +100,13 @@ bundle agent selective_mount(knowledge)
     # into this bundle like I normally do. Then all the other references are
     # cleaner and easier to read.
     "fstab_entry_inactive[$(mount_points)]"
-      string => "$($(knowledge).mount[$(mount_points)][file_system])\s+\$(mount_points)\s+$($(knowledge).mount[$(mount_points)][type])\s+$($(knowledge).mount[$(mount_points)][options])\s+$($(knowledge).mount[$(mount_points)][dump])\s+$($(knowledge).mount[$(mount_points)][pass])",
+      string => "$(mount[$(mount_points)][file_system])\s+\$(mount_points)\s+$(mount[$(mount_points)][type])\s+$(mount[$(mount_points)][options])\s+$(mount[$(mount_points)][dump])\s+$(mount[$(mount_points)][pass])",
       #string => "regex, match of get me from knowledge.removal_regex[$(mount_points)]",
       #comment => "This is a regular expression to match lines in fstab that
       #            ought not be there. It's conveniant to set this string in
       #            knowledge so that its configurable on how to remove, but show an example with
       #            an exact match and one with a partial match.",
-      comment => "$($(knowledge).mount[$(mount_points)][reason])",
+      comment => "$(mount[$(mount_points)][reason])",
       ifvarclass => "want_$(c_mount[$(mount_points)])_inactive";
       # Yeah I think each field must be escaped in order to match well for removal.
       # TODO: KNOWN ISSUE: you cant just flip a mount from active to inactive
@@ -108,17 +118,18 @@ bundle agent selective_mount(knowledge)
   classes:
     "want_$(mount_points)_active"
       scope => "namespace",
-      expression => strcmp("active", "$($(knowledge).mount[$(mount_points)][status])");
+      expression => strcmp("active", "$(mount[$(mount_points)][status])");
 
     "want_$(mount_points)_inactive"
       scope => "namespace", # Have to namespace scope for the presnet_absent_lines bundle to be able to use the class?
-      expression => strcmp("inactive", "$($(knowledge).mount[$(mount_points)][status])");
+      expression => strcmp("inactive", "$(mount[$(mount_points)][status])");
 
 
   files:
     "$(this.promise_dirname)/fstab"
       create => "true",
-      comment => "$($(knowledge).mount[$(mount_points)][reason])",
+      comment => "$(mount[$(mount_points)][reason])",
+      ifvarclass => "want_$(c_mount[$(mount_points)])_inactive|want_$(c_mount[$(mount_points)])_active",
       edit_line => present_absent_lines("want_$(c_mount[$(mount_points)])_active", "$(fstab_entry_active[$(mount_points)])",
                                         "want_$(c_mount[$(mount_points)])_inactive", "$(fstab_entry_inactive[$(mount_points)])" );
 
@@ -144,7 +155,7 @@ bundle agent selective_mount(knowledge)
         ifvarclass => "want_$(c_mount[$(mount_points)])_inactive";
 }
 
-bundle edit_line present_absent_lines(presnet_class, present_line, absent_class, absent_line)
+bundle edit_line present_absent_lines(present_class, present_line, absent_class, absent_line)
 {
   insert_lines:
     "$(present_line)"
