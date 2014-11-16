@@ -1,0 +1,9 @@
+bundle common nickanderson_emacs_config_settings
+{
+  vars:
+    "config[template]"
+      string => "$(this.promise_dirname)/templates/nickanderson.emacs.mustache";
+
+    "config[path]"
+      string => "/home/nickanderson/.emacs";
+}

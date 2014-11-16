@@ -1,0 +1,71 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; File name: ` ~/.emacs '
+;;; ---------------------
+;;;
+;;; If you need your own personal ~/.emacs
+;;; please make a copy of this file
+;;; an placein your changes and/or extension.
+;;;
+;;; Copyright (c) 1997-2002 SuSE Gmbh Nuernberg, Germany.
+;;;
+;;; Author: Werner Fink, <feedback@suse.de> 1997,98,99,2002
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+
+
+(global-auto-revert-mode t)
+;; Regenerate agenda biffer when emas is idle for more than 5 sec.
+(run-with-idle-timer 5 nil (lambda () (org-agenda-list) (delete-window)))
+(add-to-list 'load-path "~/.emacs.d/evil")
+(require 'evil)
+(evil-mode 1)
+(require 'org)
+(define-key global-map "\C-cl" 'org-store-link)
+(define-key global-map "\C-ca" 'org-agenda)
+(setq org-log-done t)
+(add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
+(setq org-agenda-files (list
+                             "~/CFEngine/a10042/a10042.org"
+                             "~/CFEngine/customers/CDPHP/org.org"
+                             "~/CFEngine/customers/Dupont_Pioneer/dupont.org"
+                             "~/CFEngine/customers/Pfizer/pfizer.org"
+                       )
+)
+
+
+;;; Test of Emacs derivates
+;;; -----------------------
+;;;
+(if (string-match "XEmacs\\|Lucid" emacs-version)
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;;; XEmacs
+  ;;; ------
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  (progn
+     (if (file-readable-p "~/.xemacs/init.el")
+        (load "~/.xemacs/init.el" nil t))
+  )
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;;; GNU-Emacs
+  ;;; ---------
+  ;;; load ~/.gnu-emacs or, if not exists /etc/skel/.gnu-emacs
+  ;;; For a description and the settings see /etc/skel/.gnu-emacs
+  ;;;   ... for your private ~/.gnu-emacs your are on your one.
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  (if (file-readable-p "~/.gnu-emacs")
+      (load "~/.gnu-emacs" nil t)
+    (if (file-readable-p "/etc/skel/.gnu-emacs")
+	(load "/etc/skel/.gnu-emacs" nil t)))
+
+  ;; Custom Settings
+  ;; ===============
+  ;; To avoid any trouble with the customization system of GNU emacs
+  ;; we set the default file ~/.gnu-emacs-custom
+  (setq custom-file "~/.gnu-emacs-custom")
+  (load "~/.gnu-emacs-custom" t t)
+;;;
+
+)
+
+
