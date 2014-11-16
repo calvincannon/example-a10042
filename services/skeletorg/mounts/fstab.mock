@@ -1,0 +1,4 @@
+ddd/dev/sdc1	/var/cfengine/state/pg	xfs	noatime,noquota,nobarrier	0	0
+/dev/sdc1	/var/cfengine/state/pg	xfs	noatime,noquota,nobarrier	0	0
+/dev/sda	/home	ext4	noatime	1	2
+/dev/sdh    /scratch    ext3    defaults 0 0

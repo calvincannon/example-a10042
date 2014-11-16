@@ -1,0 +1,48 @@
+bundle agent emacs_config(settings)
+{
+  vars:
+    "template"
+      string => "$($(settings).config[template])",
+      comment => "Path to mustache template used to render config";
+
+    "path"
+      string => "$($(settings).config[path])",
+      comment => "Path to the emacs configuration file";
+
+    # Set the owner the same as the directory owner
+    "path_owner"
+      string => filestat( dirname($(path)), uid),
+      comment => "It seems unnecessary to expose every little detail of the
+                  config. Lets just assume the owner will be the the same as
+                  the directory.";
+
+    "path_group"
+      string => filestat( dirname($(path)), gid),
+      comment => "It seems unnecessary to expose every little detail of the
+                  config. Lets just assume the group will be the the same as
+                  the directory.";
+
+    "path_mode"
+      string => "400",
+      comment => "Pretty restrictive permissins, but CFEngine is managing the
+                  file, so why encourage anyone to make local edits?";
+
+  files:
+    "$(path)"
+      edit_template => "$(template)",
+      template_method => "mustache",
+      perms => mog($(path_mode), $(path_owner), $(path_group)),
+      comment => "If we don't render the template the config won't be as
+                 needed. We apply restrictive permissions with the ownership of
+                 the parent directory so that the user does not have to fiddle
+                 with setting them.";
+
+  reports:
+    DEBUG|DEBUG_emacs_config::
+      "-== $(this.bundle) ==-";
+      "Template: $(template)";
+      "Config:   $(path)";
+      "Owner:    $(path_owner)";
+      "Group:    $(path_group)";
+      "Mode:     $(path_mode)";
+}
