@@ -1,0 +1,9 @@
+#!/bin/bash
+export CFENGINE_MP_URL=http://admin:admin@localhost:80
+export ANSIBLE_HOSTS={{{vars.sys.bindir}}}/report.pl
+
+# To make things easy in my fluctuating test env. Probably don't want to do
+# this in prod.
+export ANSIBLE_HOST_KEY_CHECKING=False
+
+ansible --user vagrant "$@" --ask-pass

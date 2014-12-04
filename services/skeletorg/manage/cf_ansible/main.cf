@@ -1,0 +1,39 @@
+bundle agent cf_ansible
+# @brief Install a simple ansible wrapper
+{
+  vars:
+    "cf_ansible" string => "$(sys.bindir)/cf-ansible";
+
+    redhat::
+      "dependancies"
+        comment => "These dependancies are needed by ansible.",
+        slist => {
+                   "ansible",
+                   "libyaml",
+                   "python-babel",
+                   "python-crypto",
+                   "python-crypto2.6",
+                   "python-httplib2",
+                   "python-jinja2",
+                   "python-keyczar",
+                   "python-paramiko",
+                   "python-pyasn1",
+                   "python-setuptools",
+                   "PyYAML",
+                 };
+
+  files:
+    "$(cf_ansible)"
+      create => "true";
+
+    "$(cf_ansible)"
+      edit_template => "$(this.promise_dirname)/templates/cf-ansible.mustache",
+      template_method => "mustache";
+
+    "$(cf_ansible)"
+      perms => mog("100", "root", "root");
+
+
+  methods:
+      "dependancies" usebundle => package_present(@(dependancies));
+}

@@ -1,0 +1,36 @@
+bundle agent cf_report
+{
+  vars:
+    "report_pl" string => "$(sys.bindir)/report.pl";
+
+    redhat::
+      "dependancies"
+        comment => "These dependancies are needed by report.pl",
+        slist => {
+                   "perl-libwww-perl",
+                   "mailcap",
+                   "perl-Compress-Zlib",
+                   "perl-Compress-Raw-Zlib",
+                   "perl-IO-Compress-Base",
+                   "perl-IO-Compress-Zlib",
+                   "perl-URI",
+                   "perl-HTML-Parser",
+                   "perl-HTML-Tagset",
+                   "perl-JSON",
+                 };
+
+  files:
+    "$(report_pl)"
+      create => "true";
+
+    "$(report_pl)"
+      edit_template => "$(this.promise_dirname)/templates/report.pl.mustache",
+      template_method => "mustache";
+
+    "$(report_pl)"
+      perms => mog("100", "root", "root");
+
+
+  methods:
+    "dependancies" usebundle => package_present(@(dependancies));
+}
