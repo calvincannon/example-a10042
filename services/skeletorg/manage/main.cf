@@ -1,0 +1,31 @@
+bundle common skeletorg_manage_main_file_control
+{
+  vars:
+    #enable_manage_emacs_config::
+      "input[emacs_config]" string => "$(this.promise_dirname)/emacs_config/main.cf";
+      "input[emacs_config_settings]" string => "$(this.promise_dirname)/emacs_config/settings.cf";
+      "input[report_pl]" string => "$(this.promise_dirname)/cf_report/main.cf";
+      "input[cf_ansible]" string => "$(this.promise_dirname)/cf_ansible/main.cf";
+
+    enable_manage_sysctl::
+      "input[sysctl]" string => "$(this.promise_dirname)/sysctl/main.cf";
+
+    any::
+      "inputs"
+        slist => getvalues(input);
+}
+
+body file control
+{
+  inputs => { @(skeletorg_manage_main_file_control.inputs) };
+}
+
+bundle agent skeletorg_manage_main
+{
+
+  methods:
+    nickanderson_thinkpad_w520::
+      "emacs"
+        usebundle => emacs_config("nickanderson_emacs_config_settings");
+
+}

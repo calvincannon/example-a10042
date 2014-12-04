@@ -5,6 +5,7 @@ bundle common skeletorg_main_file_control
       "inputs" slist => {
                         "$(this.promise_dirname)/classification/main.cf",
                         "$(this.promise_dirname)/inventory/main.cf",
+                        "$(this.promise_dirname)/manage/main.cf",
                         };
 }
 
@@ -21,7 +22,6 @@ bundle agent skeletorg_main
   methods:
       "Inventory" usebundle => skeletorg_inventory_main;
 
-  reports:
-    (inform_mode|verbose_mode)::
-      "$(this.bundle): Activated";
+
+      "Manage"  usebundle => skeletorg_manage_main;
 }
