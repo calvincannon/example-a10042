@@ -1,0 +1,80 @@
+#openssl s_client -connect direct.cmdln.org:993 -ssl3 < /dev/null
+#
+#returnszero then it connected and you are vulnerable
+#does not return 0 then you are probably ok?
+#If output has "ssl handshake failure" then you are not vulnerable
+#Else unknown
+
+bundle agent example_inventory_CVE_2014_3566_settings
+{
+  vars:
+    "port[https]" string => "443";
+}
+
+bundle agent inventory_CVE_2014_3566_go
+{
+  methods:
+    "go" usebundle => inventory_CVE_2014_3566("example_inventory_CVE_2014_3566_settings");
+}
+
+bundle agent inventory_CVE_2014_3566(settings)
+{
+  meta:
+    "description" string => "SSLv3 is insecure and broken at the protocol level: http://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2014-3566";
+
+  vars:
+    "port" data => mergedata("$(settings).port");
+    "ports" slist => getindices(port);
+
+    "openssl" string => "/usr/bin/openssl";
+
+    "test_result_$(ports)" string => execresult("$(openssl) s_client -connect localhost:$(port[$(ports)]) -ssl3 < /dev/null", "useshell");
+
+    CVE_2014_3566::
+      "vulnerable"
+        string => "CVE-2014-3566",
+        meta => { "inventory", "attribute_name=Vulnerable CVE(s)" };
+
+      "vulnerable_port[$(ports)]"
+        string => "$(port[$(ports)])",
+        meta => { "inventory", "attribute_name=CVE-2014-366 Vulnerable Port(s)" },
+        ifvarclass => "CVE_2014_3566_on_$(ports)";
+
+     # TODO what redmine ticket is this?
+     # Lists suck in Enterprise Mission Portal Inventory because you cant chart them yet. Need that ability improved.
+     # But on the otherhand, no sense in going to the extra work of generating a list in this case :-)
+     #"vulnerable_ports"
+     #   meta => { "inventory", "attribute_name=CVE-2014-366 Vulnerable Port(s)" },
+     #   slist => getvalues(vulnerable_port);
+
+  classes:
+    "CVE_2014_3566_on_$(ports)"
+      not => regcmp( "(.* ssl handshake failure .*)|(.*Connection refused.*)", "$(test_result_$(ports))" ),
+      scope => "namespace",
+      meta => { "report" };
+
+    "CVE_2014_3566"
+      scope => "namespace",
+      persistence => "10",
+      meta => { "report" },
+      expression => classmatch("CVE_2014_3566_on_.*"),
+      comment => "We persist the class for 2 agent runs so that bundles
+                  activated before this bundle can use the class on the next
+                  agent execution to coordinate things like package updates.";
+
+  reports:
+    DEBUG|DEBUG_cve_2014_3566::
+      "Test Result: localhost:$(ports)/$(port[$(ports)])
+         $(openssl) s_client -connect localhost:$(port[$(ports)]) -ssl3 < /dev/null
+'$(test_result_$(ports))'
+=====================================================================";
+
+    CVE_2014_3566.(inform_mode|verbose_mode)::
+      "Tested Vulnerable for CVE-2014-3566: $($(this.bundle)_meta.description)";
+
+      "$(ports)/$(port[$(ports)]) on localhost found to be using sslv3"
+        ifvarclass => "CVE_2014_3566_on_$(ports)";
+
+ any::
+      "$(vulnerable_ports)";
+}

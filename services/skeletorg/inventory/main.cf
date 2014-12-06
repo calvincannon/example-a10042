@@ -2,8 +2,10 @@ bundle common skeletorg_inventory_main_file_control {
   vars:
       "inputs" slist => {
                         "$(this.promise_dirname)/ssh/main.cf",
-                        "$(this.promise_dirname)/nginxplus/main.cf",
+                        #"$(this.promise_dirname)/nginxplus/main.cf",
                         "$(this.promise_dirname)/ntp/main.cf",
+                        "$(this.promise_dirname)/CVE_2014_6271/main.cf",
+                        "$(this.promise_dirname)/CVE_2014_3566/main.cf",
                         "$(this.promise_dirname)/sysctl_conf/main.cf",
                         "$(this.promise_dirname)/resolv_conf/main.cf",
                         };
@@ -25,11 +27,17 @@ bundle agent skeletorg_inventory_main
 
       "SSH" usebundle => inventory_ssh;
 
-      "NginxPlus" usebundle => inventory_nginx_plus;
-      "NginxPlusCertificate" usebundle => inventory_nginx_plus_certificate;
-      "NginxPlusDaysFromExpiration" usebundle => inventory_nginx_plus_license_expiration;
+      #"NginxPlus" usebundle => inventory_nginx_plus;
+      #"NginxPlusCertificate" usebundle => inventory_nginx_plus_certificate;
+      #"NginxPlusDaysFromExpiration" usebundle => inventory_nginx_plus_license_expiration;
 
       "resolv_conf" usebundle => inventory_resolv_conf;
+
+      "ShellShock" -> { "Security" }
+        usebundle => inventory_CVE_2014_6271;
+
+      "POODLE"
+        usebundle => inventory_CVE_2014_3566("example_inventory_CVE_2014_3566_settings");
 
   reports:
     (inform_mode|verbose_mode)::
