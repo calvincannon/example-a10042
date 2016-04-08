@@ -1,7 +1,17 @@
+body file control
+{
+  inputs => { "$(sys.libdir)/files.cf" };
+}
 bundle agent cf_report
 {
   vars:
     "report_pl" string => "$(sys.bindir)/report.pl";
+
+    "query_host_id"
+      string => "IPAddress",
+      #string => "HostName",
+      comment => "This determines how report.pl will find the hosts, by
+                  IPAddress or by HostName";
 
     redhat::
       "dependancies"
